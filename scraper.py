@@ -64,7 +64,7 @@ if not articles_found and html:
         href = a["href"]
         title = a.get_text(strip=True)
         if (
-            ("/article/" in href or "/content/" in href)
+            "/content/article/" in href
             and href not in seen
             and len(title) > 15
         ):
