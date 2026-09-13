@@ -1,31 +1,18 @@
 import json
 import re
+from curl_cffi import requests
 from feedgen.feed import FeedGenerator
-import requests
 
 URL = "https://www.tcgplayer.com/content/"
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-    ),
-    "Accept": (
-        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
-    ),
-    "Accept-Language": "en-US,en;q=0.9",
-    "Sec-Ch-Ua": (
-        '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"'
-    ),
-    "Sec-Ch-Ua-Mobile": "?0",
-    "Sec-Ch-Ua-Platform": '"Windows"',
-}
 
 fg = FeedGenerator()
 fg.title("TCGplayer Infinite Content")
 fg.link(href=URL, rel="alternate")
 fg.description("Últimas noticias y artículos de TCGplayer")
 
+# curl_cffi simula a nivel de red un navegador Chrome real para evitar el antibot
 try:
-  res = requests.get(URL, headers=HEADERS, timeout=30)
+  res = requests.get(URL, impersonate="chrome120", timeout=30)
   html = res.text
 except Exception as e:
   print(f"Error al conectar con la web: {e}")
@@ -33,6 +20,7 @@ except Exception as e:
 
 articles_found = False
 
+# 1. Intentar leer los datos internos del framework (Next/Nuxt)
 match = re.search(
     r'<script id="__NEXT_DATA__" type="application/json">(.+?)</script>', html
 )
@@ -43,11 +31,12 @@ if match:
     posts = (
         page_props.get("articles")
         or page_props.get("posts")
-        or page_props.get("latestArticles", [])
+        or page_props.get("latestArticles")
+        or []
     )
-    for post in posts[:20]:
-      title = post.get("title")
-      slug = post.get("slug") or post.get("url", "")
+    for post in posts[:25]:
+      title = post.get("title") or post.get("headline")
+      slug = post.get("slug") or post.get("url") or ""
       if title and slug:
         link = (
             slug
@@ -59,9 +48,10 @@ if match:
         fe.link(href=link)
         fe.id(link)
         articles_found = True
-  except Exception:
-    pass
+  except Exception as e:
+    print(f"Error parseando JSON: {e}")
 
+# 2. Si no viene en __NEXT_DATA__, buscar directamente los enlaces en el HTML
 if not articles_found and html:
   from bs4 import BeautifulSoup
 
@@ -74,7 +64,7 @@ if not articles_found and html:
     if (
         ("/article/" in href or "/content/" in href)
         and href not in seen
-        and len(title) > 12
+        and len(title) > 15
     ):
       seen.add(href)
       full_url = (
@@ -86,6 +76,7 @@ if not articles_found and html:
       fe.id(full_url)
       articles_found = True
 
+# 3. Fallback en caso de que aún no extraiga datos
 if not articles_found:
   fe = fg.add_entry()
   fe.title("Feed inicializado - Esperando primera actualización de artículos")
@@ -93,4 +84,6 @@ if not articles_found:
   fe.id(URL)
 
 fg.rss_file("feed.xml")
-print("Archivo feed.xml generado correctamente.")
+print(
+    f"Archivo feed.xml generado. Articulos encontrados: {articles_found}"
+)
