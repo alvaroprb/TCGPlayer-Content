@@ -21,7 +21,9 @@ jobs:
           python-version: '3.11'
 
       - name: Instalar dependencias
-        run: pip install curl_cffi beautifulsoup4 feedgen
+        run: |
+          pip install beautifulsoup4 feedgen playwright
+          playwright install --with-deps chromium
 
       - name: Ejecutar scraper
         run: python scraper.py
