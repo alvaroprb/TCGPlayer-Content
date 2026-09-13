@@ -6,6 +6,44 @@ from feedgen.feed import FeedGenerator
 
 URL = "https://www.tcgplayer.com/content/"
 
+# Categorías conocidas que aparecen pegadas delante del título
+KNOWN_CATEGORIES = [
+    "Magic: The Gathering",
+    "Disney Lorcana",
+    "Flesh and Blood",
+    "Star Wars: Unlimited",
+    "Dragon Ball Super: Fusion World",
+    "Shadowverse: Evolve",
+    "Sorcery: Contested Realm",
+    "Cardfight!! Vanguard",
+    "Grand Archive TCG",
+    "Gundam Card Game",
+    "Digimon Card Game",
+    "One Piece",
+    "Yu-Gi-Oh!",
+    "Riftbound",
+    "Pokémon",
+]
+
+
+def clean_title(raw_title):
+    text = raw_title
+
+    # 1. Quitar la categoría pegada al principio
+    for cat in KNOWN_CATEGORIES:
+        if text.startswith(cat):
+            text = text[len(cat):]
+            break
+
+    # 2. Quitar "Read Now" pegado al final
+    text = re.sub(r"Read Now$", "", text)
+
+    # 3. Quitar "By<Autor>" pegado al final
+    text = re.sub(r"By[A-ZÀ-Ý][\wÀ-ÿ'\.]*(?:\s[A-ZÀ-Ý][\wÀ-ÿ'\.]*)*$", "", text)
+
+    return text.strip()
+
+
 fg = FeedGenerator()
 fg.title("TCGplayer Infinite Content")
 fg.link(href=URL, rel="alternate")
@@ -48,7 +86,7 @@ if match:
                     else f"https://www.tcgplayer.com/content{slug}"
                 )
                 fe = fg.add_entry()
-                fe.title(title)
+                fe.title(clean_title(title))
                 fe.link(href=link)
                 fe.id(link)
                 articles_found = True
@@ -62,18 +100,18 @@ if not articles_found and html:
     seen = set()
     for a in links:
         href = a["href"]
-        title = a.get_text(strip=True)
+        raw_title = a.get_text(strip=True)
         if (
             "/content/article/" in href
             and href not in seen
-            and len(title) > 15
+            and len(raw_title) > 15
         ):
             seen.add(href)
             full_url = (
                 href if href.startswith("http") else f"https://www.tcgplayer.com{href}"
             )
             fe = fg.add_entry()
-            fe.title(title)
+            fe.title(clean_title(raw_title))
             fe.link(href=full_url)
             fe.id(full_url)
             articles_found = True
