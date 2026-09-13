@@ -21,7 +21,7 @@ jobs:
           python-version: '3.11'
 
       - name: Instalar dependencias
-        run: pip install requests beautifulsoup4 feedgen
+        run: pip install curl_cffi beautifulsoup4 feedgen
 
       - name: Ejecutar scraper
         run: python scraper.py
