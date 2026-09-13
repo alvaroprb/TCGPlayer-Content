@@ -62,7 +62,6 @@ def extract_article_content(page, url):
 
 
 fg = FeedGenerator()
-fg.load_extension("content")
 fg.title("TCGplayer Infinite Content")
 fg.link(href=URL, rel="alternate")
 fg.description("Últimas noticias y artículos de TCGplayer")
